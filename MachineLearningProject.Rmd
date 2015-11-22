@@ -1,0 +1,153 @@
+---
+title: "Exercise Modeling by Machine Learning"
+author: "E. Chavolla"
+date: "November, 2015"
+output: html_document
+---
+******
+
+##Summary
+
+This work uses the data recollected by the [HAR project]( http://groupware.les.inf.puc-rio.br/har). The following work intends to model and predict the exercise type using the information obtained by several sensors.
+
+The datasets used in this study can be obtained from:   
+
+* [Training](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+* [Testing](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+   
+******
+
+##Data loading
+
+The datasets are loaded 
+
+```{r,warning=FALSE,message=FALSE}
+#loading libraries
+library(caret)
+library(rpart)
+library(randomForest)
+library(knitr);
+
+#Adding format to table, it is  added to the document using `r style`
+style<-"<style>td{border:solid 1px black;padding:5px;} </style>"
+
+#loading the datasets
+trainData<-read.csv("pml-training.csv", na.strings=c("NA", "#DIV/0!"," ", ""),strip.white=TRUE)
+testData<-read.csv("pml-testing.csv", na.strings=c("NA", "#DIV/0!"," ", ""),strip.white=TRUE)
+
+```
+
+`r style`
+
+
+******
+##Data Procesing
+
+Since the raw data loaded contains several NA values, it is needed to remove the columns that are incomplete, also some data is not related with the exercise itself, but with the process of obtaining  the data. All of this columns must be removed.
+
+```{r,warning=FALSE,message=FALSE}
+#Get the columns with missing data
+completeColumns = apply(trainData,2,function(x){sum(is.na(x)) == 0 })
+trainData2 = trainData[,as.logical( as.raw(completeColumns))  ]
+#Remove unrelated columns
+trainData2 = trainData2[, !names(trainData2) %in% c("X","user_name","raw_timestamp_part_1","raw_timestamp_part_2","cvtd_timestamp","new_window","num_window")]
+
+```
+
+From the resulting variables a quick plot can be done to verify if there is a noticeable pattern for a given training variable that could explain the  **classe** variable
+```{r,warning=FALSE,message=FALSE}
+featurePlot(x=trainData2[,1:52],y=trainData2$classe)
+```
+
+
+In the plot can be seen that none of the training variables has a defined pattern regarding the classe variable
+
+******
+##Data splitting and Crossvalidation setup
+
+Since there are  *`r length(trainData2[1,])`* observations, the training dataset can be split in 2 sets on for the machine learning training and the second for testing the resulting machine learning algorithm and get the out of sample error. 
+
+```{r,warning=FALSE,message=FALSE}
+#Setting a seed, so the results can be replicated
+set.seed(12345)
+#Create a split index at 70% for testing and the rest for testing
+indexTrain <- createDataPartition(trainData2$classe,p = 0.7,list = FALSE)
+rTrain<-trainData2[indexTrain,]
+rTest<-trainData2[-indexTrain,]
+
+```
+
+An implementation of the trainControl object is created in order to perform a cross validation operation. This will help in the out of sample error and improve accuracy.
+
+```{r,warning=FALSE,message=FALSE}
+#create a cross validation using 5 folds and allowing parallel processing if available
+crossValidationSetUp<-trainControl(method = "cv",number = 5, allowParallel = T)
+```
+
+
+******
+##Algorithm training
+
+ The algorithm selected is *Random Forest*, since as indicated by the lectures and documentation this algorithm is really accurate. Since this algorithm is slow is set to only create 200 trees in order to reduce the computational cost.
+ 
+```{r,warning=FALSE,message=FALSE} 
+#Train the algorithm
+rfTest<-train(classe~.,data=rTrain,method = "rf", ntree=200, importance=T, 
+              allowParallel=T,trControl = crossValidationSetUp) 
+ktTrain<-kable( rfTest$results ,format = "html",  align='c')
+#Test the trained algorithm
+predRF<-predict(rfTest, rTest)
+#Get the confusion  matrix
+cMatrix<-confusionMatrix(predRF, rTest$classe)
+#formating the results
+kt<-kable( cMatrix$table ,format = "html",  align='c')
+ktPerformace<-kable( cMatrix$overall ,format = "html",  align='c')
+
+```
+
+  The training process exhibit the following measurements for in sample error
+  `r ktTrain`
+  
+  `r "<br/><br/><br/>"`
+    
+    
+  In the confusion matrix can be seen that the algorithm produced a good result in the test
+    `r kt`
+  
+    
+   `r "<br/><br/><br/>"` 
+    
+  Regarding the measurements comming from the testing *rTest* dataset:
+
+   `r ktPerformace`
+
+As expected the usage of Cross validation allowed the training process to avoid over fitting. So the accuracy measurements obtained from the training, are not different from the ones obtained from testing *rTest*. This allows to have better predicting algorithm.
+
+
+ Also the importance of the variables can be plotted 
+ 
+```{r,warning=FALSE,message=FALSE}  
+ varImpPlot(rfTest$finalModel,main = "Variable Importance for Random Forest", cex=0.7  )
+```
+
+
+******
+##Final Test
+
+The obtained model has to be tested against the testing dataset provided
+```{r,warning=FALSE,message=FALSE}  
+#The testing set has to be set with the same columns as the training
+validationData<- testData[,names(testData) %in% names(trainData2)]
+#Predicting the classe values
+result<-predict(rfTest, validationData)
+```
+
+No reviewing the resulting prediction
+
+ `r as.character(result)`
+
+
+******
+
+   
+
