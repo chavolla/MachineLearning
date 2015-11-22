@@ -65,7 +65,7 @@ In the plot can be seen that none of the training variables has a defined patter
 ******
 ##Data splitting and Crossvalidation setup
 
-Since there are  *`r length(trainData2[1,])`* observations, the training dataset can be split in 2 sets on for the machine learning training and the second for testing the resulting machine learning algorithm and get the out of sample error. 
+Since there are  *`r length(trainData2[,1])`* observations, the training dataset can be split in 2 sets on for the machine learning training and the second for testing the resulting machine learning algorithm and get the out of sample error. 
 
 ```{r,warning=FALSE,message=FALSE}
 #Setting a seed, so the results can be replicated
@@ -121,7 +121,7 @@ ktPerformace<-kable( cMatrix$overall ,format = "html",  align='c')
 
    `r ktPerformace`
 
-As expected the usage of Cross validation allowed the training process to avoid over fitting. So the accuracy measurements obtained from the training, are not different from the ones obtained from testing *rTest*. This allows to have better predicting algorithm.
+As expected the usage of Cross validation allowed the training process to avoid over fitting. So the accuracy measurements obtained from the training, are not different from the ones obtained from testing *rTest*. This allows to have a better predicting algorithm.
 
 
  Also the importance of the variables can be plotted 
